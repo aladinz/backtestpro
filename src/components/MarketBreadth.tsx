@@ -223,9 +223,10 @@ const MarketBreadth: React.FC = () => {
       let days, baseAD, trendDirection, baseVIX, baseMcClellan, basePutCall;
       
       // Different data ranges and trends based on timeframe
+      // Ensure minimum data points for chart rendering
       switch (selectedTimeframe) {
         case '1D':
-          days = 1;
+          days = 24; // Use hourly data for 1 day
           baseAD = 2145;
           baseVIX = 28.85;
           baseMcClellan = -32.4;
@@ -274,20 +275,30 @@ const MarketBreadth: React.FC = () => {
       }
       
       for (let i = days - 1; i >= 0; i--) {
-        const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
-        const progress = (days - 1 - i) / (days - 1);
+        const date = new Date(now.getTime() - i * (selectedTimeframe === '1D' ? 60 * 60 * 1000 : 24 * 60 * 60 * 1000));
+        const progress = days > 1 ? (days - 1 - i) / (days - 1) : 0;
         const randomFactor = Math.random() * 0.3 - 0.15; // ±15% random variation
         
+        // Ensure all values are proper numbers with parseFloat and toFixed
+        const advanceDeclineValue = parseFloat((baseAD + (trendDirection * progress * 300) + (Math.random() * 200 - 100)).toFixed(2));
+        const mcclellanValue = parseFloat((baseMcClellan + (trendDirection * progress * 20) + (Math.random() * 10 - 5)).toFixed(2));
+        const vixValue = parseFloat((baseVIX + (Math.abs(trendDirection) * progress * 8) + (Math.random() * 4 - 2)).toFixed(2));
+        const putCallValue = parseFloat((basePutCall + (randomFactor * 0.2) + (Math.random() * 0.15 - 0.075)).toFixed(3));
+        const newHighsLowsValue = parseFloat(((baseMcClellan * 2) + (trendDirection * progress * 80) + (Math.random() * 40 - 20)).toFixed(0));
+        
         data.push({
-          date: date.toISOString().split('T')[0],
-          advanceDecline: baseAD + (trendDirection * progress * 300) + (Math.random() * 200 - 100),
-          mcclellan: baseMcClellan + (trendDirection * progress * 20) + (Math.random() * 10 - 5),
-          vix: baseVIX + (Math.abs(trendDirection) * progress * 8) + (Math.random() * 4 - 2),
-          putCall: basePutCall + (randomFactor * 0.2) + (Math.random() * 0.15 - 0.075),
-          newHighsLows: (baseMcClellan * 2) + (trendDirection * progress * 80) + (Math.random() * 40 - 20)
+          date: selectedTimeframe === '1D' 
+            ? date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+            : date.toISOString().split('T')[0],
+          advanceDecline: advanceDeclineValue,
+          mcclellan: mcclellanValue,
+          vix: vixValue,
+          putCall: putCallValue,
+          newHighsLows: newHighsLowsValue
         });
       }
       
+      console.log('Generated breadth data:', data.slice(0, 3)); // Debug log
       setBreadthData(data);
       setLoading(false);
     };
@@ -576,9 +587,18 @@ const MarketBreadth: React.FC = () => {
                   dataKey="date" 
                   stroke="#9CA3AF"
                   fontSize={12}
-                  tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  tickFormatter={(value) => {
+                    if (selectedTimeframe === '1D') {
+                      return value; // Already formatted as time
+                    }
+                    return new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                  }}
                 />
-                <YAxis stroke="#9CA3AF" fontSize={12} />
+                <YAxis 
+                  stroke="#9CA3AF" 
+                  fontSize={12}
+                  domain={['dataMin - 100', 'dataMax + 100']}
+                />
                 <Tooltip 
                   contentStyle={{ 
                     backgroundColor: '#1F2937', 
@@ -586,6 +606,10 @@ const MarketBreadth: React.FC = () => {
                     borderRadius: '8px',
                     color: '#F3F4F6'
                   }}
+                  formatter={(value, name) => [
+                    typeof value === 'number' ? value.toFixed(2) : value,
+                    'A/D Line'
+                  ]}
                 />
                 <Line 
                   type="monotone" 
@@ -619,9 +643,18 @@ const MarketBreadth: React.FC = () => {
                   dataKey="date" 
                   stroke="#9CA3AF"
                   fontSize={12}
-                  tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  tickFormatter={(value) => {
+                    if (selectedTimeframe === '1D') {
+                      return value; // Already formatted as time
+                    }
+                    return new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                  }}
                 />
-                <YAxis stroke="#9CA3AF" fontSize={12} />
+                <YAxis 
+                  stroke="#9CA3AF" 
+                  fontSize={12}
+                  domain={['dataMin - 10', 'dataMax + 10']}
+                />
                 <Tooltip 
                   contentStyle={{ 
                     backgroundColor: '#1F2937', 
@@ -629,6 +662,10 @@ const MarketBreadth: React.FC = () => {
                     borderRadius: '8px',
                     color: '#F3F4F6'
                   }}
+                  formatter={(value, name) => [
+                    typeof value === 'number' ? value.toFixed(2) : value,
+                    'McClellan'
+                  ]}
                 />
                 <Line 
                   type="monotone" 
@@ -662,9 +699,18 @@ const MarketBreadth: React.FC = () => {
                   dataKey="date" 
                   stroke="#9CA3AF"
                   fontSize={12}
-                  tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  tickFormatter={(value) => {
+                    if (selectedTimeframe === '1D') {
+                      return value; // Already formatted as time
+                    }
+                    return new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                  }}
                 />
-                <YAxis stroke="#9CA3AF" fontSize={12} />
+                <YAxis 
+                  stroke="#9CA3AF" 
+                  fontSize={12}
+                  domain={[10, 60]}
+                />
                 <Tooltip 
                   contentStyle={{ 
                     backgroundColor: '#1F2937', 
@@ -672,6 +718,10 @@ const MarketBreadth: React.FC = () => {
                     borderRadius: '8px',
                     color: '#F3F4F6'
                   }}
+                  formatter={(value, name) => [
+                    typeof value === 'number' ? value.toFixed(2) : value,
+                    'VIX Fear Index'
+                  ]}
                 />
                 <Line 
                   type="monotone" 
@@ -705,9 +755,18 @@ const MarketBreadth: React.FC = () => {
                   dataKey="date" 
                   stroke="#9CA3AF"
                   fontSize={12}
-                  tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  tickFormatter={(value) => {
+                    if (selectedTimeframe === '1D') {
+                      return value; // Already formatted as time
+                    }
+                    return new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                  }}
                 />
-                <YAxis stroke="#9CA3AF" fontSize={12} />
+                <YAxis 
+                  stroke="#9CA3AF" 
+                  fontSize={12}
+                  domain={[0.5, 2.0]}
+                />
                 <Tooltip 
                   contentStyle={{ 
                     backgroundColor: '#1F2937', 
@@ -715,6 +774,10 @@ const MarketBreadth: React.FC = () => {
                     borderRadius: '8px',
                     color: '#F3F4F6'
                   }}
+                  formatter={(value, name) => [
+                    typeof value === 'number' ? value.toFixed(3) : value,
+                    'Put/Call Ratio'
+                  ]}
                 />
                 <Line 
                   type="monotone" 

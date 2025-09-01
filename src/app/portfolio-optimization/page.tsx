@@ -330,7 +330,7 @@ export default function PortfolioOptimization() {
           volatility: data.volatility,
           beta: data.beta,
           riskLevel,
-          color: getColorForCategory(asset.category),
+          color: getColorForCategory(asset.symbol || asset.category),
           contributionToReturn: (asset.allocation / 100) * data.return,
           contributionToRisk: (asset.allocation / 100) * data.volatility
         }
@@ -426,7 +426,52 @@ export default function PortfolioOptimization() {
       'Small Cap': '#EC4899',
       'Custom': '#64748B'
     }
-    return colors[category] || '#64748B'
+    
+    // If it's a predefined category, return its color
+    if (colors[category]) {
+      return colors[category]
+    }
+    
+    // For custom assets (like individual stock symbols), generate a beautiful color
+    return generateColorFromString(category)
+  }
+
+  // Generate beautiful, consistent colors from string hash
+  const generateColorFromString = (str: string): string => {
+    const beautifulColors = [
+      '#3B82F6', // Blue
+      '#10B981', // Emerald
+      '#F59E0B', // Amber
+      '#EF4444', // Red
+      '#8B5CF6', // Violet
+      '#F97316', // Orange
+      '#6366F1', // Indigo
+      '#EC4899', // Pink
+      '#06B6D4', // Cyan
+      '#84CC16', // Lime
+      '#F472B6', // Rose
+      '#A855F7', // Purple
+      '#14B8A6', // Teal
+      '#F97316', // Orange
+      '#8B5CF6', // Violet
+      '#22C55E', // Green
+      '#3B82F6', // Blue
+      '#DC2626', // Red
+      '#7C3AED', // Violet
+      '#059669'  // Emerald
+    ]
+    
+    // Simple hash function to convert string to number
+    let hash = 0
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i)
+      hash = ((hash << 5) - hash) + char
+      hash = hash & hash // Convert to 32-bit integer
+    }
+    
+    // Use absolute value and modulo to get consistent color index
+    const colorIndex = Math.abs(hash) % beautifulColors.length
+    return beautifulColors[colorIndex]
   }
 
   // Ticker validation function
