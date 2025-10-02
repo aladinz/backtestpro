@@ -62,6 +62,8 @@ export default function PortfolioLibraryEnhanced() {
   const [searchTerm, setSearchTerm] = useState('')
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [showAdvanced, setShowAdvanced] = useState(false)
+  const [deployingStrategy, setDeployingStrategy] = useState<string | null>(null)
+  const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null)
 
   // Enhanced demo strategies with more variety and detail
   const demoStrategies: StrategyPerformance[] = [
@@ -401,6 +403,89 @@ export default function PortfolioLibraryEnhanced() {
     }
   }
 
+  const showNotification = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
+    setNotification({ message, type })
+    setTimeout(() => setNotification(null), 4000)
+  }
+
+  const handleDeploy = async (strategy: StrategyPerformance) => {
+    setDeployingStrategy(strategy.id)
+    showNotification(`Deploying ${strategy.name}...`, 'info')
+    
+    // Simulate deployment process
+    await new Promise(resolve => setTimeout(resolve, 1500))
+    
+    setDeployingStrategy(null)
+    showNotification(`Successfully deployed ${strategy.name}! Check your portfolio dashboard.`, 'success')
+  }
+
+  const handleClone = (strategy: StrategyPerformance) => {
+    // Copy strategy configuration to clipboard
+    const strategyConfig = {
+      name: strategy.name,
+      type: strategy.type,
+      symbols: strategy.symbols,
+      complexity: strategy.complexity,
+      riskLevel: strategy.riskLevel,
+      tags: strategy.tags
+    }
+    
+    navigator.clipboard.writeText(JSON.stringify(strategyConfig, null, 2))
+      .then(() => showNotification(`${strategy.name} configuration copied to clipboard!`, 'success'))
+      .catch(() => showNotification('Failed to copy strategy configuration', 'error'))
+  }
+
+  const handlePreview = (strategy: StrategyPerformance) => {
+    // Open preview in new window or modal
+    const previewUrl = `/strategy-preview?id=${strategy.id}`
+    showNotification(`Opening preview for ${strategy.name}...`, 'info')
+    
+    // For now, show a notification. In a real app, you'd navigate to a preview page
+    setTimeout(() => {
+      showNotification(`Preview: ${strategy.name} | Return: ${strategy.totalReturn.toFixed(1)}% | Sharpe: ${strategy.sharpeRatio.toFixed(2)} | Win Rate: ${strategy.winRate.toFixed(1)}%`, 'info')
+    }, 500)
+  }
+
+  const handleExport = (strategy: StrategyPerformance) => {
+    // Export strategy as JSON file
+    const exportData = {
+      strategy: {
+        name: strategy.name,
+        description: strategy.description,
+        type: strategy.type,
+        symbols: strategy.symbols,
+        complexity: strategy.complexity,
+        riskLevel: strategy.riskLevel,
+        tags: strategy.tags
+      },
+      performance: {
+        totalReturn: strategy.totalReturn,
+        sharpeRatio: strategy.sharpeRatio,
+        winRate: strategy.winRate,
+        maxDrawdown: strategy.maxDrawdown
+      },
+      metadata: {
+        author: strategy.author,
+        lastUpdated: strategy.lastUpdated,
+        backtestPeriod: strategy.backtestPeriod,
+        minCapital: strategy.minCapital
+      },
+      exportDate: new Date().toISOString()
+    }
+    
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${strategy.name.replace(/\s+/g, '-').toLowerCase()}-strategy.json`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+    
+    showNotification(`Exported ${strategy.name} strategy data!`, 'success')
+  }
+
   if (loading && !data) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -595,6 +680,29 @@ export default function PortfolioLibraryEnhanced() {
           </div>
         </motion.div>
 
+        {/* Notification Toast */}
+        <AnimatePresence>
+          {notification && (
+            <motion.div
+              initial={{ opacity: 0, y: -50 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -50 }}
+              className={`fixed top-4 right-4 z-50 p-4 rounded-lg border shadow-lg max-w-md ${
+                notification.type === 'success' ? 'bg-green-900/90 border-green-700 text-green-200' :
+                notification.type === 'error' ? 'bg-red-900/90 border-red-700 text-red-200' :
+                'bg-blue-900/90 border-blue-700 text-blue-200'
+              }`}
+            >
+              <div className="flex items-center space-x-3">
+                {notification.type === 'success' && <CheckCircle2 className="h-5 w-5" />}
+                {notification.type === 'error' && <AlertCircle className="h-5 w-5" />}
+                {notification.type === 'info' && <Activity className="h-5 w-5" />}
+                <p className="font-medium">{notification.message}</p>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Error Message */}
         {error && (
           <motion.div
@@ -731,15 +839,22 @@ export default function PortfolioLibraryEnhanced() {
                   <motion.button
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
-                    className="bg-blue-600 text-white py-3 px-4 rounded-lg font-semibold flex items-center justify-center space-x-2 hover:bg-blue-700 transition-colors"
+                    onClick={() => handleDeploy(strategy)}
+                    disabled={deployingStrategy === strategy.id}
+                    className="bg-blue-600 text-white py-3 px-4 rounded-lg font-semibold flex items-center justify-center space-x-2 hover:bg-blue-700 transition-colors disabled:bg-blue-800 disabled:cursor-not-allowed"
                   >
-                    <Play className="h-4 w-4" />
-                    <span>Deploy</span>
+                    {deployingStrategy === strategy.id ? (
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Play className="h-4 w-4" />
+                    )}
+                    <span>{deployingStrategy === strategy.id ? 'Deploying...' : 'Deploy'}</span>
                   </motion.button>
                   
                   <motion.button
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
+                    onClick={() => handleClone(strategy)}
                     className="bg-slate-700 text-white py-3 px-4 rounded-lg font-semibold flex items-center justify-center space-x-2 hover:bg-slate-600 transition-colors"
                   >
                     <Copy className="h-4 w-4" />
@@ -751,6 +866,7 @@ export default function PortfolioLibraryEnhanced() {
                       <motion.button
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
+                        onClick={() => handlePreview(strategy)}
                         className="bg-green-600 text-white py-3 px-4 rounded-lg font-semibold flex items-center justify-center space-x-2 hover:bg-green-700 transition-colors"
                       >
                         <Eye className="h-4 w-4" />
@@ -760,6 +876,7 @@ export default function PortfolioLibraryEnhanced() {
                       <motion.button
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
+                        onClick={() => handleExport(strategy)}
                         className="bg-purple-600 text-white py-3 px-4 rounded-lg font-semibold flex items-center justify-center space-x-2 hover:bg-purple-700 transition-colors"
                       >
                         <Download className="h-4 w-4" />
